@@ -24,13 +24,14 @@ selected_data <- transfusion_data %>%
   # replace NA with 0s where appropriate (transfusion variables)
   mutate_at(vars(rbc_0_24hrs:cryo_72hr_total), ~replace_na(., 0))
 
-
 ## Create new variables that we need and remove old ones
 new_vars <- selected_data %>%
+  # Create peri variables
   mutate(peri_RBC = intra_packed_cells + rbc_0_24hrs) %>%
   mutate(peri_plasma = intra_fresh_frozen_plasma + ffp_0_24hrs) %>%
   mutate(peri_platelets = intra_platelets + plt_0_24hrs) %>%
   mutate(peri_cryoprecipitate = intra_cryoprecipitate + cryo_0_24hrs) %>%
+  mutate(any_transfusion = ifelse(peri_RBC > 0 | peri_plasma > 0 | peri_platelets > 0 | peri_cryoprecipitate > 0, "Yes", "No")) %>%
   mutate(las_status = case_when(las_score < 30 ~ "20-29",
                                 las_score >= 30 & las_score < 40 ~ "30-39",
                                 las_score >= 40 ~ "40+")) %>%
@@ -44,7 +45,7 @@ new_vars <- selected_data %>%
   mutate(intra_ecls_type = case_when(ecls_ecmo == T & ecls_cpb == F ~ "ECMO",
                                      ecls_ecmo == F & ecls_cpb == T ~ "CPB",
                                      ecls_ecmo == F & ecls_cpb == F ~ "None")) %>% 
-  mutate(death_count = death_date - or_date) %>% 
+  mutate(death_days = death_date - or_date) %>% 
   mutate(transplant_reason = case_when(copd == T & alpha1_antitrypsin_deficiency == F & cystic_fibrosis == F & idiopathic_pulmonary_hypertension == F & interstitial_lung_disease == F & pulm_other == F ~ "COPD",
                                        copd == T & (alpha1_antitrypsin_deficiency == T | cystic_fibrosis == T | idiopathic_pulmonary_hypertension == T | interstitial_lung_disease == T | pulm_other == T) ~ "Multiple",
                                        copd == F & alpha1_antitrypsin_deficiency == T & cystic_fibrosis == F & idiopathic_pulmonary_hypertension == F & interstitial_lung_disease == F & pulm_other == F ~ "A1AD",
@@ -67,14 +68,14 @@ new_vars$preoperative_ecls[new_vars$preoperative_ecls == F] <- "No"
 
 # Create datasets
 q1_data <- new_vars %>%
-  select(peri_RBC, peri_plasma, peri_platelets, peri_cryoprecipitate, gender, 
+  select(peri_RBC, peri_plasma, peri_platelets, peri_cryoprecipitate, massive_transfusion, any_transfusion, gender, 
          height, weight, age, bmi, transplant_reason, comorbidity_score, pre_hb,
          pre_hct, pre_platelets, pre_pt, pre_inr, pre_ptt, las_status, transplant_type, 
          repeat_status, exvivo_lung_perfusion, preoperative_ecls, intra_ecls_type)
 
 
 q2_data <- new_vars %>%
-  select(peri_RBC, peri_plasma, peri_platelets, peri_cryoprecipitate, gender, 
+  select(peri_RBC, peri_plasma, peri_platelets, peri_cryoprecipitate, massive_transfusion, any_transfusion, gender, 
          height, weight, age, bmi, transplant_reason, comorbidity_score, pre_hb,
          pre_hct, pre_platelets, pre_pt, pre_inr, pre_ptt, las_status, transplant_type, 
          repeat_status, exvivo_lung_perfusion, preoperative_ecls, intra_ecls_type, 
