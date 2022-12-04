@@ -41,76 +41,72 @@ par(mfrow=c(2,2))
 q2_data$massive_transfusion <- factor(q2_data$massive_transfusion)
 massive_sf  <- survfit(Surv(time, death_status == "Dead") ~ massive_transfusion, data = q2_data)
 print(massive_sf)
-plot(survfit(Surv(time, death_status == "Dead") ~ massive_transfusion, data = q2_data), fun = "S", xlab = "Days From Transplant", ylab = "Survival", main = "Massive Transfusion", col = c('red', "blue"))
 legend("topright", legend = c("Transfusion", "No Transfusion"), lty = 1, col = c("red", "blue"))
 
 # Check Assumptions for log-rank test
+plot(survfit(Surv(time, death_status == "Dead") ~ massive_transfusion, data = q2_data), fun = "S", xlab = "Days From Transplant", ylab = "Survival", main = "Massive Transfusion", col = c('red', "blue"))
 plot(survfit(Surv(time, death_status == "Dead") ~ massive_transfusion, data = q2_data), fun = "cloglog")
 
 # Log-rank test
 survdiff(Surv(time, death_status == "Dead") ~ massive_transfusion, data = q2_data) # p = 0.07
 
 ## RBC
-
-# Create K-M Surival Curve
-rbc_sf  <- survfit(Surv(time, death_status == "Dead") ~ any_RBC, data = q2_data)
+rbc_sf  <- survfit(Surv(time, death_status == "Dead") ~ high_RBC, data = q2_data)
 print(rbc_sf)
-plot(survfit(Surv(time, death_status == "Dead") ~ any_RBC, data = q2_data), fun = "S", xlab = "Days From Transplant", ylab = "Survival", main = "RBC Transfusion", col = c('red', "blue"))
+plot(survfit(Surv(time, death_status == "Dead") ~ high_RBC, data = q2_data), xlab = "Days From Transplant", ylab = "Survival", main = "RBC Transfusion", col = c('red', "blue"))
 legend("topright", legend = c("Transfusion", "No Transfusion"), lty = 1, col = c("red", "blue"))
 
 # Check Assumptions for log-rank test
-plot(survfit(Surv(time, death_status == "Dead") ~ any_RBC, data = q2_data), fun = "cloglog")
+plot(survfit(Surv(time, death_status == "Dead") ~ high_RBC, data = q2_data), fun = "S", xlab = "Days From Transplant", ylab = "Survival", main = "RBC Transfusion", col = c('red', "blue"))
+legend("topright", legend = c("Transfusion", "No Transfusion"), lty = 1, col = c("red", "blue"))
+plot(survfit(Surv(time, death_status == "Dead") ~ high_RBC, data = q2_data), fun = "cloglog")
 
 # Log-rank test
-survdiff(Surv(time, death_status == "Dead") ~ any_RBC, data = q2_data) # p = 0.07
+survdiff(Surv(time, death_status == "Dead") ~ high_RBC, data = q2_data) # p = 0.07
 
 ## Plasma
-plasma_sf  <- survfit(Surv(time, death_status == "Dead") ~ any_plasma, data = q2_data)
+plasma_sf  <- survfit(Surv(time, death_status == "Dead") ~ high_plasma, data = q2_data)
 print(plasma_sf)
-plot(survfit(Surv(time, death_status == "Dead") ~ any_plasma, data = q2_data), fun = "S", xlab = "Days From Transplant", ylab = "Survival", main = "FFP Transfusion", col = c('red', "blue"))
+plot(survfit(Surv(time, death_status == "Dead") ~ high_plasma, data = q2_data), xlab = "Days From Transplant", ylab = "Survival", main = "FFP Transfusion", col = c('red', "blue"))
 legend("topright", legend = c("Transfusion", "No Transfusion"), lty = 1, col = c("red", "blue"))
 
 # Check Assumptions for log-rank test
-plot(survfit(Surv(time, death_status == "Dead") ~ any_plasma, data = q2_data), fun = "cloglog")
+plot(survfit(Surv(time, death_status == "Dead") ~ high_RBC, data = q2_data), fun = "S", xlab = "Days From Transplant", ylab = "Survival", main = "RBC Transfusion", col = c('red', "blue"))
+legend("topright", legend = c("Transfusion", "No Transfusion"), lty = 1, col = c("red", "blue"))
+plot(survfit(Surv(time, death_status == "Dead") ~ high_plasma, data = q2_data), fun = "cloglog")
 
 # Log-rank test
-survdiff(Surv(time, death_status == "Dead") ~ any_plasma, data = q2_data)  # p = 0.04
-
-platelets_sf  <- survfit(Surv(time, death_status == "Dead") ~ any_platelets, data = q2_data)
-print(platelets_sf)
-plot(platelets_sf, xlab = "Days from Surgery", ylab = "Survival", col = c("red", "blue"))
-title("Platelet Transfusion"))
+survdiff(Surv(time, death_status == "Dead") ~ high_plasma, data = q2_data)  # p = 0.04
 
 ## Platelets
-platelets_sf  <- survfit(Surv(time, death_status == "Dead") ~ any_platelets, data = q2_data)
+platelets_sf  <- survfit(Surv(time, death_status == "Dead") ~ high_platelets, data = q2_data)
 print(platelets_sf)
-plot(survfit(Surv(time, death_status == "Dead") ~ any_platelets, data = q2_data), fun = "S", xlab = "Days From Transplant", ylab = "Survival", main = "Platelet Transfusion", col = c('red', "blue"))
-legend("topright", legend = c("Transfusion", "No Transfusion"), lty = 1, col = c("red", "blue"))
+plot(survfit(Surv(time, death_status == "Dead") ~ high_platelets, data = q2_data), xlab = "Days From Transplant", ylab = "Survival", main = "Platelet Transfusion", col = c('red', "blue"))
 title("platelets Transfusion")
 
 # Check Assumptions for log-rank test
-plot(survfit(Surv(time, death_status == "Dead") ~ any_platelets, data = q2_data), fun = "cloglog")
+plot(survfit(Surv(time, death_status == "Dead") ~ high_platelets, data = q2_data), fun = "S", xlab = "Days From Transplant", ylab = "Survival", main = "Platelet Transfusion", col = c('red', "blue"))
+legend("topright", legend = c("Transfusion", "No Transfusion"), lty = 1, col = c("red", "blue"))
+plot(survfit(Surv(time, death_status == "Dead") ~ high_platelets, data = q2_data), fun = "cloglog")
 
 # Log-rank test
-survdiff(Surv(time, death_status == "Dead") ~ any_platelets, data = q2_data)  # p = 0.7
+survdiff(Surv(time, death_status == "Dead") ~ high_platelets, data = q2_data)  # p = 0.7
 
-platelets_sf  <- survfit(Surv(time, death_status == "Dead") ~ any_platelets, data = q2_data)
-print(platelets_sf)
-plot(platelets_sf, xlab = "Days from Surgery", ylab = "Survival", col = c("red", "blue"))
-title("Platelet Transfusion"))
 
 ## Cryo
-cryo_sf  <- survfit(Surv(time, death_status == "Dead") ~ any_cryo, data = q2_data)
+cryo_sf  <- survfit(Surv(time, death_status == "Dead") ~ high_cryo, data = q2_data)
 print(cryo_sf)
-plot(survfit(Surv(time, death_status == "Dead") ~ any_cryo, data = q2_data), fun = "S", xlab = "Days From Transplant", ylab = "Survival", main = "Cryoprecipitate Transfusion", col = c('red', "blue"))
+plot(survfit(Surv(time, death_status == "Dead") ~ high_cryo, data = q2_data), xlab = "Days From Transplant", ylab = "Survival", main = "Cryoprecipitate Transfusion", col = c('red', "blue"))
 legend("topright", legend = c("Transfusion", "No Transfusion"), lty = 1, col = c("red", "blue"))
 title("cryo Transfusion")
 
 # Check Assumptions for log-rank test
-plot(survfit(Surv(time, death_status == "Dead") ~ any_cryo, data = q2_data), fun = "cloglog")
+plot(survfit(Surv(time, death_status == "Dead") ~ high_cryo, data = q2_data), fun = "S", xlab = "Days From Transplant", ylab = "Survival", main = "Cryoprecipitate Transfusion", col = c('red', "blue"))
+legend("topright", legend = c("Transfusion", "No Transfusion"), lty = 1, col = c("red", "blue"))
+plot(survfit(Surv(time, death_status == "Dead") ~ high_cryo, data = q2_data), fun = "cloglog")
 
 # Log-rank test
-survdiff(Surv(time, death_status == "Dead") ~ any_cryo, data = q2_data)  # p = 0.3
+survdiff(Surv(time, death_status == "Dead") ~ high_cryo, data = q2_data)  # p = 0.3
 
 ### Proportional Cox Models
 
@@ -140,11 +136,8 @@ peri_cox  <- coxph(Surv(time, death_status == "Dead") ~ peri_RBC + peri_cryoprec
 summary(peri_cox)
 cox.zph(peri_cox)
 
-## FFP
-
-## Platelets
-
-## Cryoprecipitate
-
-
 ### Non-Mortality Patient Outcomes ###
+
+# Hospital LOS
+
+# 
