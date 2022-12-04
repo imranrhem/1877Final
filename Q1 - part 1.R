@@ -6,10 +6,11 @@ library(lubridate)
 library(mice)
 library(corrplot)
 library(psych)
-library('readxl')
 
-# Import data
-transfusion_data <- read_excel("transfusion_data.xlsx", stringsAsFactors = T, na.strings = c("", "?", "#VALUE!"))
+#Import data
+setwd("~/Documents/1877Final")
+
+transfusion_data <- read.csv("transfusion_data.csv", stringsAsFactors = T, na.strings = c("", "?", "#VALUE!"))
 
 # Clean up column names
 names(transfusion_data) <- tolower(names(transfusion_data))
@@ -70,94 +71,159 @@ new_vars$preoperative_ecls[new_vars$preoperative_ecls == F] <- "No"
 q1_data <- new_vars %>%
   select(peri_RBC, peri_plasma, peri_platelets, peri_cryoprecipitate, massive_transfusion, any_transfusion, gender, 
          height, weight, age, bmi, transplant_reason, comorbidity_score, pre_hb,
-         pre_hct, pre_platelets, pre_pt, pre_inr, pre_ptt, las_status, transplant_type, 
+         pre_hct, pre_platelets, pre_pt, pre_inr, pre_ptt, las_score, transplant_type, 
          repeat_status, exvivo_lung_perfusion, preoperative_ecls, intra_ecls_type)
+summary(q1_data)
 
-
-q2_data <- new_vars %>%
-  select(peri_RBC, peri_plasma, peri_platelets, peri_cryoprecipitate, massive_transfusion, any_transfusion, gender, 
-         height, weight, age, bmi, transplant_reason, comorbidity_score, pre_hb,
-         pre_hct, pre_platelets, pre_pt, pre_inr, pre_ptt, las_status, transplant_type, 
-         repeat_status, exvivo_lung_perfusion, preoperative_ecls, intra_ecls_type, 
-         death_days, icu_los, hospital_los, alive_30days_yn, alive_90days_yn, alive_12mths_yn)
-
+#take complete observations only - NAs in the las score
+q1_datacomplete <- q1_data[complete.cases(q1_data),]
 
 #convert to categorical after imputation
-mutate(las_status = case_when(las_score < 30 ~ "20-29",
+q1data <- q1_datacomplete %>%
+  mutate(las_status = case_when(las_score < 30 ~ "20-29",
                               las_score >= 30 & las_score < 40 ~ "30-39",
-                              las_score >= 40 ~ "40+")) %>%
+                              las_score >= 40 ~ "40+"))%>%
+  mutate(las_status = as.factor(las_status))%>%
+  mutate(repeat_status = as.factor(repeat_status))%>%
+  mutate(transplant_type = as.factor(transplant_type))%>%
+  mutate(transplant_reason = as.factor(transplant_reason))%>%
+  mutate(peri_RBC = as.numeric(peri_RBC))%>%
+  mutate(peri_plasma = as.numeric(peri_plasma))%>%
+  mutate(peri_platelets = as.numeric(peri_platelets))%>%
+  mutate(peri_cryoprecipitate = as.numeric(peri_cryoprecipitate))%>%
+  mutate(gender = as.factor(gender))%>%
+  mutate(preoperative_ecls = as.factor(preoperative_ecls))%>%
+  mutate(intra_ecls_type = as.factor(intra_ecls_type))
+  
 
-##### Descriptive Statistics #####
-summary(q2_data)
-#1 missing in pre_ptt -> impute
-#12 missing in las_score -> impute
-#187 missing in pre_fibrinogen -> impute?
-#160 missing in death_date -> haven't died yet
+#view row and column count of new data frame
+dim(no_outliers) 
 
-# Numerical variables
-q2_data$death_days <- as.numeric(q2_data$death_days)
-num_vars <- names(dplyr::select_if(q2_data, is.numeric))
-describe(q2_data[num_vars])
+#######################################################################
+######MANOVA FOR DIFFERENCES BETWEEN TRANSFUSION OR NO TRANSFUSION#####
+########################################################################
 
-# Categorical variables
-cat_vars <- names(dplyr::select_if(q2_data, is.character))
-lapply(q2_data[cat_vars],table)
+resman <- manova(cbind(height,weight, age, bmi, transplant_reason, 
+                       comorbidity_score, pre_hb, pre_hct, pre_platelets, 
+                       pre_pt, pre_inr, pre_ptt, las_status, repeat_status, 
+                       exvivo_lung_perfusion, preoperative_ecls, intra_ecls_type) ~ any_transfusion, data = q1data)
+summary.aov(resman)
 
-# Categorical variables
+#significant variables: height, weight, age, comorbidity score, any transfusion, pre_hb, 
+#pre_hct, las_status, repeat_status, intra_ecls_type
 
-## Save as RDS
+#Conducting t-test for continuous variables 
+t.test(height ~ any_transfusion, data=q1data)
+t.test(weight ~ any_transfusion, data=q1data)
+t.test(age ~ any_transfusion, data=q1data)
+t.test(pre_hb ~ any_transfusion, data=q1data)
+t.test(pre_hct ~any_transfusion, data=q1data)
+t.test(repeat_status ~ any_transfusion, data = q1data)
+t.test(intra_ecls_type ~ any_transfusion, data = q1data)
 
-saveRDS(q1_data, "q1_data.rds")
-saveRDS(q2_data, "q2_data.rds")
+#creating individidual boxplots  
+#boxplot for height 
+height <- ggboxplot(q1datattest, x = "any_transfusion", y = "height",
+               xlab = "Transfusion Received", ylab = "Height in cm", color = "blue", palette = "jco",
+               add = "jitter", font.label = list(size = 50, face = "plain"))
+#  Add p-value
+height + stat_compare_means()
+# Change method
+height + stat_compare_means(method = "t.test")
 
-######## TEST CODE ######## 
+#boxplot for weight
+weight <- ggboxplot(q1datattest, x = "any_transfusion", y = "weight",
+                    xlab = "Transfusion Received", ylab = "Weight", color = "black", palette = "jco",
+                    add = "jitter", font.label = list(size = 50, face = "plain"))
+#  Add p-value
+weight + stat_compare_means()
+# Change method
+weight + stat_compare_means(method = "t.test")
 
-### Pre-imputation EDA
+#boxplot for age
+age <- ggboxplot(q1datattest, x = "any_transfusion", y = "age",
+                    xlab = "Transfusion Received", ylab = "Age", color = "purple", palette = "jco",
+                    add = "jitter", font.label = list(size = 50, face = "plain"))
+#  Add p-value
+age + stat_compare_means()
+# Change method
+age + stat_compare_means(method = "t.test")
 
-# Check missingness and distributions
-summary(selected_data)
-#1 missing in pre_ptt -> impute
-#12 missing in las_score -> impute
-#187 missing in pre_fibrinogen -> impute?
-#160 missing in death_date -> haven't died yet
+#boxplot for hb
 
-# Check correlations
-num_only <- selected_data %>% 
-  dplyr::select(where(is.numeric))
+pre_hb <- ggboxplot(q1datattest, x = "any_transfusion", y = "pre_hb",
+                               xlab = "Transfusion Received", ylab = "Hemoglobin Levles Pre-Surgery", color = "dark orange", palette = "jco",
+                               add = "jitter", font.label = list(size = 50, face = "plain"))
+#  Add p-value
+pre_hb + stat_compare_means()
+# Change method
+pre_hb + stat_compare_means(method = "t.test")
 
-corrplot(cors)
-# height-weight are correlated
-# weight and BMI are correlated
-# pre_hb-rbc_0_24
-# pre_hb-pre_inr
-# all intras are corerlated
-# all intras and total_24rbc
-# all ttransfusion varibales are corelated for the most part
-# no correlations with LAS score that re of issue, assume no colinearity then
+#boxplot for hct
+pre_hct <- ggboxplot(q1datattest, x = "any_transfusion", y = "pre_hct",
+                    xlab = "Transfusion Received", ylab = "Hematocrit Levles Pre-Surgery", color = "dark red", palette = "jco",
+                    add = "jitter", font.label = list(size = 50, face = "plain"))
+#  Add p-value
+pre_hct + stat_compare_means()
+# Change method
+pre_hct + stat_compare_means(method = "t.test")
 
-### Imputation
+#Fisher Exact test for categorical variables 
+#######transplant reason################# - underlying diagnosis (not found to be sig for manova but still tried)
+transplant_reason <- q1data$transplant_reason
+any_transfusion <- q1data$any_transfusion
 
-# Check pattern of missingness
-md.pattern(selected_data, rotate.names = T)
-# Variables to include in imputation: variables of the intended model + variables related to missingness
-#12 observations where LAS is missing, 10 missing with death_date, no meaningful relationship
-# LAS is not MAR
+transplantframe <- data.frame(transplant_reason, any_transfusion)
+transplantmatrix <- as.data.frame.matrix(table(transplantframe))
 
-# Imputation of LAS
-# factors used to calculate LAS: age, ht, wt, diangosis, functional status, ventilation, ECLS
+fisher.test(transplantmatrix)
+pairwise_fisher_test(transplantmatrix, p.adjust.method = "fdr")
 
-#want to impute the las scores before convert to categorical? 
+######comorbidity score########
+comorbidity_score <- q1data$comorbidity_score
 
-# stochastic regression -> improvement from the above method "norm.nob" -> added some error +noise
-imputteddata <- transfusion[, c("las_status")]
-imp <- mice(data.lim.PCS, method = "norm.nob", seed = 11,
-            m = 1, print = FALSE)
-xyplot(imp, SF36.PCS ~ Epworth.Sleepiness.Scale + Athens.Insomnia.Scale + Berlin.Sleepiness.Scale) # Imputed values for ozone are not always the same, it depends on solar.
+comorbframe <- data.frame(comorbidity_score, any_transfusion)
+comorbmatrix <- as.data.frame.matrix(table(comorbframe))
 
-fit.stoch <- with(imp, lm(SF36.PCS ~ Epworth.Sleepiness.Scale + Athens.Insomnia.Scale + Berlin.Sleepiness.Scale))
-summary(pool(fit.stoch))
+fisher.test(comorbmatrix)
+pairwise_fisher_test(comorbmatrix, p.adjust.method = "fdr")
 
-# this is how we can extract the actual imputed dataset
-imputed.data.frame <- complete(imp, action = 1)
+###########las_status fisher test######
+las_status <- q1data$las_status
+
+lasframe <- data.frame(las_status, any_transfusion)
+lasmatrix <- as.data.frame.matrix(table(lasframe))
+
+fisher.test(lasmatrix)
+pairwise_fisher_test(lasmatrix, p.adjust.method = "fdr")
+
+#######repeat_status
+repeat_status <- q1data$repeat_status
+
+repeatframe <- data.frame(repeat_status, any_transfusion)
+repeatmatrix <- as.data.frame.matrix(table(repeatframe))
+
+fisher.test(repeatmatrix)
+pairwise_fisher_test(repeatmatrix, p.adjust.method = "fdr")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
