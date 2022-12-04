@@ -40,8 +40,10 @@ new_vars <- selected_data %>%
   mutate(transplant_type = case_when(type == "Single Left Lung" ~ "Single",
                                      type == "Single Right Lung" ~ "Single",
                                      type == "Bilateral" ~ "Double")) %>%
-  mutate(repeat_status = case_when(first_lung_transplant == T ~ "First",
-                                   redo_lung_transplant == T ~ "Redo")) %>%
+  mutate(repeat_status = case_when(first_lung_transplant == T & redo_lung_transplant == F ~ "First",
+                                   first_lung_transplant == F & redo_lung_transplant == F ~ "First",
+                                   first_lung_transplant == F & redo_lung_transplant == T ~ "Redo",
+                                   first_lung_transplant == T & redo_lung_transplant == T ~ "Redo")) %>%
   mutate(intra_ecls_type = case_when(ecls_ecmo == T & ecls_cpb == F ~ "ECMO",
                                      ecls_ecmo == F & ecls_cpb == T ~ "CPB",
                                      ecls_ecmo == F & ecls_cpb == F ~ "None")) %>% 
@@ -82,11 +84,13 @@ q2_data <- new_vars %>%
          death_days, icu_los, hospital_los, alive_30days_yn, alive_90days_yn, alive_12mths_yn)
 
 
+test <- q1_data %>%
+  filter(is.na(las_status))
+
 ##### Descriptive Statistics #####
 summary(q2_data)
-  #1 missing in pre_ptt -> impute
-  #12 missing in las_score -> impute
-  #187 missing in pre_fibrinogen -> impute?
+  #1 missing in pre_ptt -> impute, cannot classify as MNAR, treat as MCAR
+  #12 missing in las_score -> impute, cannot classify as MNAR, treat as MCAR
   #160 missing in death_date -> haven't died yet
 
 # Numerical variables
@@ -117,8 +121,10 @@ summary(selected_data)
   #160 missing in death_date -> haven't died yet
 
 # Check correlations
-num_only <- selected_data %>% 
+num_only <- q2_data %>% 
   dplyr::select(where(is.numeric))
+
+cors <- cor(na.omit(num_only))
 
 corrplot(cors)
   # height-weight are correlated
