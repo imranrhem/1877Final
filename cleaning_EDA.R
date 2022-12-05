@@ -100,6 +100,7 @@ describe(q2_data[num_vars])
 # Categorical variables
 cat_vars <- names(dplyr::select_if(q2_data, is.character))
 lapply(q2_data[cat_vars],table)
+q2_data[cat_vars] <- lapply(q2_data[cat_vars],factor)
 
 factored_vars <- names(dplyr::select_if(q2_data, is.factor))
 lapply(q2_data[cat_vars],table)
