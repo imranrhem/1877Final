@@ -150,5 +150,63 @@ md.pattern(selected_data, rotate.names = T)
   # factors used to calculate LAS: age, ht, wt, diangosis, functional status, ventilation, ECLS
 
 
+### Multivariate Linear Regression
+
+model1 <- lm(cbind(peri_RBC, peri_plasma, peri_platelets, peri_cryoprecipitate) ~ 
+               gender+ height+ weight+ age+ bmi+ transplant_reason+ comorbidity_score+ pre_hb+
+               pre_hct+ pre_platelets+ pre_pt+ pre_inr+ pre_ptt+ las_status+ transplant_type+ 
+               repeat_status+ exvivo_lung_perfusion+ preoperative_ecls+ intra_ecls_type, 
+             data = q1_data)
+summary(model1)
+coef(model1)
+
+model2 <- lm(massive_transfusion ~ 
+               gender+ height+ weight+ age+ bmi+ transplant_reason+ comorbidity_score+ pre_hb+
+               pre_hct+ pre_platelets+ pre_pt+ pre_inr+ pre_ptt+ las_status+ transplant_type+ 
+               repeat_status+ exvivo_lung_perfusion+ preoperative_ecls+ intra_ecls_type, 
+             data = q1_data)
+summary(model2)
+
+
+model3 <- lm(peri_RBC ~ 
+               gender+ height+ weight+ age+ bmi+ transplant_reason+ comorbidity_score+ pre_hb+
+               pre_hct+ pre_platelets+ pre_pt+ pre_inr+ pre_ptt+ las_status+ transplant_type+ 
+               repeat_status+ exvivo_lung_perfusion+ preoperative_ecls+ intra_ecls_type, 
+             data = q1_data)
+
+model4 <- lm(peri_plasma ~ 
+               gender+ height+ weight+ age+ bmi+ transplant_reason+ comorbidity_score+ pre_hb+
+               pre_hct+ pre_platelets+ pre_pt+ pre_inr+ pre_ptt+ las_status+ transplant_type+ 
+               repeat_status+ exvivo_lung_perfusion+ preoperative_ecls+ intra_ecls_type, 
+             data = q1_data)
+
+model5 <- lm(peri_platelets ~ 
+               gender+ height+ weight+ age+ bmi+ transplant_reason+ comorbidity_score+ pre_hb+
+               pre_hct+ pre_platelets+ pre_pt+ pre_inr+ pre_ptt+ las_status+ transplant_type+ 
+               repeat_status+ exvivo_lung_perfusion+ preoperative_ecls+ intra_ecls_type, 
+             data = q1_data)
+
+model6 <- lm(peri_cryoprecipitate ~ 
+               gender+ height+ weight+ age+ bmi+ transplant_reason+ comorbidity_score+ pre_hb+
+               pre_hct+ pre_platelets+ pre_pt+ pre_inr+ pre_ptt+ las_status+ transplant_type+ 
+               repeat_status+ exvivo_lung_perfusion+ preoperative_ecls+ intra_ecls_type, 
+             data = q1_data)
+
+model7 <- lm(any_transfusion ~
+               gender+ height+ weight+ age+ bmi+ transplant_reason+ comorbidity_score+ pre_hb+
+               pre_hct+ pre_platelets+ pre_pt+ pre_inr+ pre_ptt+ las_status+ transplant_type+ 
+               repeat_status+ exvivo_lung_perfusion+ preoperative_ecls+ intra_ecls_type, 
+             data = q1_data)
+
+# backwards stepwise variable selection
+library(MASS)
+model1.back <- stepAIC(model1) # AIC 2970.25, 19/25 predictors, error
+model2.back <- stepAIC(model2) # AIC -611.13, 18/25 predictors, error
+model3.back <- stepAIC(model3) # AIC 463.1, 18/25 predictors, error remove missing values?
+model4.back <- stepAIC(model4) # AIC 317.91, 12/25 predictors
+model5.back <- stepAIC(model5) # AIC 98.88, 18/25 predictors
+model6.back <- stepAIC(model6) # AIC 463.1, 18/25 predictors
+model7.back <- stepAIC(model7) # AIC 463.1, 18/25 predictors
+
 
 
