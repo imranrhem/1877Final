@@ -9,8 +9,12 @@ library(mice)
 library(survival)
 library(boot)
 library(survminer)
+library(FSA)
 
 ### Imputation ###
+
+# Read in Data
+q2_data <- readRDS("q2_data.rds")
 
 # Check if MCAR or MAR
 las_imputation <- q2_data %>% 
@@ -21,9 +25,6 @@ las_imputation %>% missing_pairs(position = "fill")
 # releated to gender (more missing in male)
 # related to transplant_type and repeat_status
 # Therefore MAR
-
-# Read in Data
-q2_data <- readRDS("q2_data.rds")
 
 # Convert days form time variable to numeric
 q2_data$death_days <- as.numeric(q2_data$death_days)
@@ -43,15 +44,25 @@ q2_data <- q2_data %>%
   mutate(high_RBC = ifelse(peri_RBC > median(peri_RBC), "High", "Low")) %>%
   mutate(high_plasma = ifelse(peri_plasma > median(peri_plasma), "High", "Low")) %>%
   mutate(high_platelets = ifelse(peri_platelets > median(peri_platelets), "High", "Low")) %>%
-  mutate(high_cryo = ifelse(peri_cryoprecipitate > median(peri_cryoprecipitate), "High", "Low"))
+  mutate(high_cryo = ifelse(peri_cryoprecipitate > median(peri_cryoprecipitate), "High", "Low")) %>%
+  mutate(rbc_platelets = case_when(high_RBC == "High" & high_platelets == "High" ~ "Both High",
+                                   high_RBC == "High" & high_platelets == "Low" ~ "RBC Only",
+                                   high_RBC == "Low" & high_platelets == "High" ~ "Plt Only",
+                                   high_RBC == "Low" & high_platelets == "Low" ~ "Both Low"))
 
 cat_vars <- names(dplyr::select_if(q2_data, is.character))
 q2_data[cat_vars] <- lapply(q2_data[cat_vars], factor)
 
+# Relevel factors of new variables
 q2_data$high_RBC <- relevel(q2_data$high_RBC, "Low")
 q2_data$high_plasma <- relevel(q2_data$high_plasma, "Low")
 q2_data$high_platelets <- relevel(q2_data$high_platelets, "Low")
 q2_data$high_cryo <- relevel(q2_data$high_cryo, "Low")
+
+table(q2_data$high_RBC)
+table(q2_data$high_plasma)
+table(q2_data$high_platelets)
+table(q2_data$high_platelets)
 
 ### Mortality and Cox Models ###
 
@@ -109,7 +120,7 @@ ggsurvplot(fit = rbc_sf,
            ######## Format Legend #######
            legend = "none", # If you'd prefer more space for your plot, consider removing the legend
            legend.title = "All Patients",
-           legend.labs = c("RBC > 1 unit","RBC <= 1 unit"), # Change the Strata Legend
+           legend.labs = c("RBC <= 1 unit","RBC > 1 unit"), # Change the Strata Legend
            ######## Risk Table #######
            risk.table = TRUE, # Adds Risk Table
            risk.table.height = 0.25 # Adjusts the height of the risk table (default is 0.25)
@@ -118,7 +129,7 @@ ggsurvplot(fit = rbc_sf,
 
 # Check Assumptions for log-rank test
 plot(survfit(Surv(time, death_status == "Dead") ~ high_RBC, data = survival_data), fun = "S", xlab = "Days From Transplant", ylab = "Survival", main = "RBC Transfusion", col = c('red', "blue"))
-legend("topright", legend = c(">1 Unit RBC", "<= 1 Unit RBC"), lty = 1, col = c("red", "blue"))
+legend("topright", legend = c("RBC <= 1 unit", "RBC > 1 unit"), lty = 1, col = c("red", "blue"))
 plot(survfit(Surv(time, death_status == "Dead") ~ high_RBC, data = survival_data), fun = "cloglog")
 
 # Log-rank test
@@ -155,7 +166,7 @@ ggsurvplot(fit = plasma_sf,
            ######## Format Legend #######
            legend = "none", # If you'd prefer more space for your plot, consider removing the legend
            legend.title = "All Patients",
-           legend.labs = c("FFP > 0 units","FFP <= 0 units"), # Change the Strata Legend
+           legend.labs = c("FFP <= 0 units", "FFP > 0 units"), # Change the Strata Legend
            ######## Risk Table #######
            risk.table = TRUE, # Adds Risk Table
            risk.table.height = 0.25 # Adjusts the height of the risk table (default is 0.25)
@@ -163,7 +174,7 @@ ggsurvplot(fit = plasma_sf,
 
 # Check Assumptions for log-rank test
 plot(survfit(Surv(time, death_status == "Dead") ~ high_RBC, data = survival_data), fun = "S", xlab = "Days From Transplant", ylab = "Survival", main = "RBC Transfusion", col = c('red', "blue"))
-legend("topright", legend = c(">1 Unit FFP", "<=0 Unit FFP"), lty = 1, col = c("red", "blue"))
+legend("topright", legend = c("FFP <= 0 units ", "FFP > 0 units"), lty = 1, col = c("red", "blue"))
 plot(survfit(Surv(time, death_status == "Dead") ~ high_plasma, data = survival_data), fun = "cloglog")
 
 # Log-rank test
@@ -200,7 +211,7 @@ ggsurvplot(fit = platelets_sf,
            ######## Format Legend #######
            legend = "none", # If you'd prefer more space for your plot, consider removing the legend
            legend.title = "All Patients",
-           legend.labs = c("Platelets > 0 units","Platelets <= 0 units"), # Change the Strata Legend
+           legend.labs = c("Platelets <= 0 units", "Platelets > 0 units"), # Change the Strata Legend
            ######## Risk Table #######
            risk.table = TRUE, # Adds Risk Table
            risk.table.height = 0.25 # Adjusts the height of the risk table (default is 0.25)
@@ -209,7 +220,7 @@ title("platelets Transfusion")
 
 # Check Assumptions for log-rank test
 plot(survfit(Surv(time, death_status == "Dead") ~ high_platelets, data = survival_data), fun = "S", xlab = "Days From Transplant", ylab = "Survival", main = "Platelet Transfusion", col = c('red', "blue"))
-legend("bottomright", legend = c(">1 Unit Platelets", "<=0 Unit Platelets"), lty = 1, col = c("red", "blue"))
+legend("bottomright", legend = c("Platelets <= 0 units ", "Platelets > 0 units"), lty = 1, col = c("red", "blue"))
 
 # Log-rank test
 survdiff(Surv(time, death_status == "Dead") ~ high_platelets, data = survival_data)  # p = 0.9
@@ -217,7 +228,7 @@ survdiff(Surv(time, death_status == "Dead") ~ high_platelets, data = survival_da
 ## Cryo
 cryo_sf  <- survfit(Surv(time, death_status == "Dead") ~ high_cryo, data = survival_data)
 print(cryo_sf)
-ggsurvplot(fit = platelets_sf, 
+ggsurvplot(fit = cryo_sf, 
            data = survival_data,
            ####### Format Title #######
            title = "Survival Probability: Cryoprecipitate Transfusion",
@@ -246,7 +257,7 @@ ggsurvplot(fit = platelets_sf,
            ######## Format Legend #######
            legend = "none", # If you'd prefer more space for your plot, consider removing the legend
            legend.title = "All Patients",
-           legend.labs = c("Cryo > 0 units","Cryo <= 0 units"), # Change the Strata Legend
+           legend.labs = c("Cryo <= 0 units", "Cryo > 0 units"), # Change the Strata Legend
            ######## Risk Table #######
            risk.table = TRUE, # Adds Risk Table
            risk.table.height = 0.25 # Adjusts the height of the risk table (default is 0.25)
@@ -254,7 +265,7 @@ ggsurvplot(fit = platelets_sf,
 
 # Check Assumptions for log-rank test
 plot(survfit(Surv(time, death_status == "Dead") ~ high_cryo, data = survival_data), fun = "S", xlab = "Days From Transplant", ylab = "Survival", main = "Cryoprecipitate Transfusion", col = c('red', "blue"))
-legend("bottomright", legend = c(">1 Unit Cryoprecipitate", "<=0 Unit Cryoprecipitate"), lty = 1, col = c("red", "blue"))
+legend("bottomright", legend = c("Cryo <= 0 units", "Cryo > 0 units"), lty = 1, col = c("red", "blue"))
 plot(survfit(Surv(time, death_status == "Dead") ~ high_cryo, data = survival_data), fun = "cloglog")
 
 # Log-rank test
@@ -281,49 +292,103 @@ high_cox <- coxph(Surv(time, death_status == "Dead") ~ high_RBC + high_cryo + hi
 summary(high_cox)
 cox.zph(high_cox)
 
+
+## RBC and platelets + NO PLATELETS 
+
+rbc_plt_data <- survival_data %>%
+  filter(!(rbc_platelets == "Plt Only"))
+
+rbc_plt_data$rbc_platelets <- droplevels(rbc_plt_data$rbc_platelets)
+
+rbc_plt_sf  <- survfit(Surv(time, death_status == "Dead") ~ rbc_platelets, data = rbc_plt_data)
+print(rbc_plt_sf)
+ggsurvplot(fit = rbc_plt_sf, 
+           data = rbc_plt_data,
+           ####### Format Title #######
+           title = "Survival Probability: RBC + Plt Transfusion",
+           font.title = c(15, "black"),
+           ggtheme = theme_classic() + theme(plot.title = element_text(hjust = 0.5, face = "bold"))+ # theme_classic will give a white background with no lines on the plot
+             theme(plot.subtitle = element_text(hjust = 0.5, size = 16, face = "italic")), 
+           ####### Format Axes #######
+           xlab="Days From Surgery", # changes xlabel,
+           ylab = "Survival Probability",
+           font.x=c(15,"bold"), # changes x axis labels
+           font.y=c(15,"bold"), # changes y axis labels
+           font.xtickslab=c(13,"plain"), # changes the tick label on x axis
+           font.ytickslab=c(13,"plain"),
+           xlim=c(0,365),
+           axes.offset = F,
+           ####### Format Curve Lines #######
+           palette = c("red","blue", "darkgreen"),
+           ####### Censor Details ########
+           censor = TRUE, # logical value. If TRUE, censors will be drawn,
+           censor.shape="|",
+           censor.size = 5,
+           ######## Format Legend #######
+           legend = "none", 
+           legend.title = "All Patients",
+           legend.labs = c("Both High","Both Low", "RBC Only"), # Change the Strata Legend
+           ######## Risk Table #######
+           risk.table = TRUE, # Adds Risk Table
+           risk.table.height = 0.25 # Adjusts the height of the risk table (default is 0.25)
+)
+
+# Check Assumptions for log-rank test
+plot(survfit(Surv(time, death_status == "Dead") ~ rbc_platelets, data = rbc_plt_data), fun = "S", xlab = "Days From Transplant", ylab = "Survival", main = "Cryoprecipitate Transfusion", col = 1:4)
+legend("bottomright", lty = 1, col = 1:4)
+plot(survfit(Surv(time, death_status == "Dead") ~ rbc_platelets, data = rbc_plt_data), fun = "cloglog")
+
+# Log-rank test
+survdiff(Surv(time, death_status == "Dead") ~ rbc_platelets, data = rbc_plt_data)  # p = 0.2
+
+# Cox model
+rbc_plt_cox <- coxph(Surv(time, death_status == "Dead") ~ rbc_platelets + bmi + age + comorbidity_score + gender + transplant_reason + las_status + transplant_type + repeat_status, data = rbc_plt_data)
+summary(rbc_plt_cox)
+cox.zph(rbc_plt_cox)
+
 ### Non-Mortality Patient Outcomes ###
 
 ## Hospital LOS
-wilcox.test(hospital_los ~ high_RBC, data = q2_data) 
-wilcox.test(hospital_los ~ high_plasma, data = q2_data) 
-wilcox.test(hospital_los ~ high_platelets, data = q2_data) 
-wilcox.test(hospital_los ~ high_cryo, data = q2_data)
+wilcox.test(hospital_los ~ high_RBC, data = q2_data) # significant
+wilcox.test(hospital_los ~ high_plasma, data = q2_data) # significant
+wilcox.test(hospital_los ~ high_platelets, data = q2_data) # ns
+wilcox.test(hospital_los ~ high_cryo, data = q2_data) # signficant 
 
 # RBC
 RBC_hospitalLOS <- ggboxplot(q2_data, x = "high_RBC", y = "hospital_los",
                     xlab = "RBC Transfusion Level", ylab = "Hospital LOS (days)", color = "blue", palette = "jco", 
-                    font.label = list(size = 50, face = "plain"), outlier.shape = NA)
-RBC_hospitalLOS <- RBC_hospitalLOS + coord_cartesian(ylim = c(0,75))
+                    font.label = list(size = 50, face = "plain"), outlier.shape = NA) 
+RBC_hospitalLOS <- RBC_hospitalLOS + coord_cartesian(ylim = c(0,65))
 RBC_hospitalLOS
 
 # FFP
 FFP_hospitalLOS <- ggboxplot(q2_data, x = "high_plasma", y = "hospital_los",
                              xlab = "FFP Transfusion Level", ylab = "Hospital LOS (days)", color = "Red", palette = "jco", 
                              font.label = list(size = 50, face = "plain"), outlier.shape = NA)
-FFP_hospitalLOS <- FFP_hospitalLOS + coord_cartesian(ylim = c(0,75))
+FFP_hospitalLOS <- FFP_hospitalLOS + coord_cartesian(ylim = c(0,65))
 FFP_hospitalLOS
 
 # Platelets
 platelets_hospitalLOS <- ggboxplot(q2_data, x = "high_platelets", y = "hospital_los",
                              xlab = "Platelet Transfusion Level", ylab = "Hospital LOS (days)", color = "black", palette = "jco", 
                              font.label = list(size = 50, face = "plain"), outlier.shape = NA)
-platelets_hospitalLOS <- platelets_hospitalLOS + coord_cartesian(ylim = c(0,75))
+platelets_hospitalLOS <- platelets_hospitalLOS + coord_cartesian(ylim = c(0,65))
 platelets_hospitalLOS
 
 # Cryoprecipitate
 cryoprecipitate_hospitalLOS <- ggboxplot(q2_data, x = "high_cryo", y = "hospital_los",
                                    xlab = "Cryoprecipitate Transfusion Level", ylab = "Hospital LOS (days)", color = "darkgreen", palette = "jco", 
                                    font.label = list(size = 50, face = "plain"), outlier.shape = NA)
-cryoprecipitate_hospitalLOS <- cryoprecipitate_hospitalLOS + coord_cartesian(ylim = c(0,75))
+cryoprecipitate_hospitalLOS <- cryoprecipitate_hospitalLOS + coord_cartesian(ylim = c(0,65))
 cryoprecipitate_hospitalLOS
 
 hospitalLOS_charts <- grid.arrange(RBC_hospitalLOS, FFP_hospitalLOS, platelets_hospitalLOS, cryoprecipitate_hospitalLOS)
 
 ## ICU LOS 
-wilcox.test(icu_los ~ high_RBC, data = q2_data) # ns
-wilcox.test(icu_los ~ high_plasma, data = q2_data) # ns
-wilcox.test(icu_los ~ high_platelets, data = q2_data) # ns
-wilcox.test(icu_los ~ high_cryo, data = q2_data) # ns
+wilcox.test(icu_los ~ high_RBC, data = q2_data) # significant
+wilcox.test(icu_los ~ high_plasma, data = q2_data) # ns (slightly)
+wilcox.test(icu_los ~ high_platelets, data = q2_data) # ns ()
+wilcox.test(icu_los ~ high_cryo, data = q2_data) # significant
 
 # RBC
 RBC_icuLOS <- ggboxplot(q2_data, x = "high_RBC", y = "icu_los",
@@ -354,5 +419,41 @@ cryoprecipitate_icuLOS <- cryoprecipitate_icuLOS + coord_cartesian(ylim = c(0,20
 cryoprecipitate_icuLOS
 
 icuLOS_charts <- grid.arrange(RBC_icuLOS, FFP_icuLOS, platelets_icuLOS, cryoprecipitate_icuLOS)
+
+# RBC + plt
+
+# Hospital LOS
+kruskal.test(subset(q2_data, !(rbc_platelets == "Plt Only")), hospital_los ~ rbc_platelets)
+
+rbc_plt_hLOS <- dunnTest(hospital_los ~ rbc_platelets,
+              data=subset(q2_data, !(rbc_platelets == "Plt Only")),
+              method="bonferroni") # significance -> both low - RBC only, both high-both low
+
+rbc_plt_hLOS
+
+RBC_plt_hospitalLOS <- ggboxplot(data = subset(q2_data, !(rbc_platelets == "Plt Only")), x = "rbc_platelets", y = "hospital_los",
+                        xlab = "RBC and Plt Combinations", ylab = "Intensive Care Unit LOS (days)", color = "blue", palette = "jco", 
+                        font.label = list(size = 50, face = "plain"), outlier.shape = NA)
+RBC_plt_hospitalLOS <- RBC_plt_hospitalLOS + coord_cartesian(ylim = c(0,65))
+RBC_plt_hospitalLOS
+
+# ICU LOS
+kruskal.test(q2_data, icu_los ~ rbc_platelets)
+
+rbc_plt_icuLOS <- dunnTest(icu_los ~ rbc_platelets,
+                         data=subset(q2_data, !(rbc_platelets == "Plt Only")),
+                         method="bonferroni")
+
+rbc_plt_icuLOS # both high- both low, both low - RBC only
+
+RBC_plt_icuLOS <- ggboxplot(data = subset(q2_data, !(rbc_platelets == "Plt Only")), x = "rbc_platelets", y = "icu_los",
+                                 xlab = "RBC and Plt Combinations", ylab = "Intensive Care Unit LOS (days)", color = "black", palette = "jco", 
+                                 font.label = list(size = 50, face = "plain"), outlier.shape = NA)
+RBC_plt_icuLOS <- RBC_plt_icuLOS + coord_cartesian(ylim = c(0,20))
+
+RBC_plt_charts <- grid.arrange(RBC_plt_hospitalLOS, RBC_plt_icuLOS)
+
+
+
 
 
