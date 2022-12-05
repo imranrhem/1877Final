@@ -2,33 +2,13 @@
 # Objectives: Survival Analysis and Patient Outcomes
 
 library(tidyverse)
+library(gridExtra)
+library(ggplot2)
 library(finalfit)
 library(mice)
 library(survival)
 library(boot)
-library(ggplot2)
 library(survminer)
-
-
-q2_data <- readRDS("q2_data.rds")
-
-q2_data$death_days <- as.numeric(q2_data$death_days)
-
-median(q2_data$peri_RBC) # 1
-median(q2_data$peri_plasma) # 0
-median(q2_data$peri_platelets) # 0 
-median(q2_data$peri_cryoprecipitate) # 0 
-
-q2_data <- q2_data %>%
-  mutate(death_status = ifelse(!(is.na(death_days)), "Dead", "Alive")) %>%
-  mutate(time = ifelse(!(is.na(death_days)), death_days, 365)) %>%
-  mutate(high_RBC = ifelse(peri_RBC > median(peri_RBC), "High", "Low")) %>%
-  mutate(high_plasma = ifelse(peri_plasma > median(peri_plasma), "High", "Low")) %>%
-  mutate(high_platelets = ifelse(peri_platelets > median(peri_platelets), "High", "low")) %>%
-  mutate(high_cryo = ifelse(peri_cryoprecipitate > median(peri_cryoprecipitate), "High", "Low"))
-
-cat_vars <- names(dplyr::select_if(q2_data, is.character))
-q2_data[cat_vars] <- lapply(q2_data[cat_vars], factor)
 
 ### Imputation ###
 
@@ -37,15 +17,47 @@ las_imputation <- q2_data %>%
   select(c(gender:comorbidity_score, las_status, transplant_type, repeat_status, intra_ecls_type))
 
 las_imputation %>% missing_pairs(position = "fill")
-  # related to transplant_reason
-  # releated to gender (more missing in male)
-  # related to transplant_type and repeat_status
-  # Therefore MAR
+# related to transplant_reason
+# releated to gender (more missing in male)
+# related to transplant_type and repeat_status
+# Therefore MAR
+
+# Read in Data
+q2_data <- readRDS("q2_data.rds")
+
+# Convert days form time variable to numeric
+q2_data$death_days <- as.numeric(q2_data$death_days)
+
+# Check medians of different perioperative blood components
+median(q2_data$peri_RBC) # 1
+median(q2_data$peri_plasma) # 0
+median(q2_data$peri_platelets) # 0 
+median(q2_data$peri_cryoprecipitate) # 0 
+
+q2_data <- q2_data %>%
+  # Assign status of death
+  mutate(death_status = ifelse(!(is.na(death_days)), "Dead", "Alive")) %>%
+  # Assign those who are still alive to be last censored at 365 days
+  mutate(time = ifelse(!(is.na(death_days)), death_days, 365)) %>%
+  # Create new variables to designate if transfusion levels were above or below median
+  mutate(high_RBC = ifelse(peri_RBC > median(peri_RBC), "High", "Low")) %>%
+  mutate(high_plasma = ifelse(peri_plasma > median(peri_plasma), "High", "Low")) %>%
+  mutate(high_platelets = ifelse(peri_platelets > median(peri_platelets), "High", "Low")) %>%
+  mutate(high_cryo = ifelse(peri_cryoprecipitate > median(peri_cryoprecipitate), "High", "Low"))
+
+cat_vars <- names(dplyr::select_if(q2_data, is.character))
+q2_data[cat_vars] <- lapply(q2_data[cat_vars], factor)
+
+q2_data$high_RBC <- relevel(q2_data$high_RBC, "Low")
+q2_data$high_plasma <- relevel(q2_data$high_plasma, "Low")
+q2_data$high_platelets <- relevel(q2_data$high_platelets, "Low")
+q2_data$high_cryo <- relevel(q2_data$high_cryo, "Low")
 
 ### Mortality and Cox Models ###
 
 ### Survival analysis
 
+# Create new dataset with observations that have censoring or death at or before 365 days
 survival_data <- q2_data %>%
   filter(time <= 365)
 
@@ -102,6 +114,7 @@ ggsurvplot(fit = rbc_sf,
            risk.table = TRUE, # Adds Risk Table
            risk.table.height = 0.25 # Adjusts the height of the risk table (default is 0.25)
 )
+
 
 # Check Assumptions for log-rank test
 plot(survfit(Surv(time, death_status == "Dead") ~ high_RBC, data = survival_data), fun = "S", xlab = "Days From Transplant", ylab = "Survival", main = "RBC Transfusion", col = c('red', "blue"))
@@ -233,7 +246,7 @@ ggsurvplot(fit = platelets_sf,
            ######## Format Legend #######
            legend = "none", # If you'd prefer more space for your plot, consider removing the legend
            legend.title = "All Patients",
-           legend.labs = c("Cryoprecipitate > 0 units","Cryoprecipitate <= 0 units"), # Change the Strata Legend
+           legend.labs = c("Cryo > 0 units","Cryo <= 0 units"), # Change the Strata Legend
            ######## Risk Table #######
            risk.table = TRUE, # Adds Risk Table
            risk.table.height = 0.25 # Adjusts the height of the risk table (default is 0.25)
@@ -252,8 +265,6 @@ survdiff(Surv(time, death_status == "Dead") ~ high_cryo, data = survival_data)  
 ## Checking distributions of variables
 
 # Numerical Variables
-num_vars <- names(dplyr::select_if(survival_data, is.numeric))
-num_vars
 hist(survival_data$peri_RBC) # right skew
 hist(log(survival_data$peri_RBC))
 hist(survival_data$peri_plasma) # right skew
@@ -270,25 +281,78 @@ high_cox <- coxph(Surv(time, death_status == "Dead") ~ high_RBC + high_cryo + hi
 summary(high_cox)
 cox.zph(high_cox)
 
-ggforest(high_cox)
-
-## Peri Cox
-peri_cox  <- coxph(Surv(time, death_status == "Dead") ~ peri_RBC + peri_cryoprecipitate + peri_platelets + peri_plasma + bmi + age + comorbidity_score + gender + transplant_reason + las_status + transplant_type + repeat_status, data = survival_data)
-summary(peri_cox)
-cox.zph(peri_cox)
-
 ### Non-Mortality Patient Outcomes ###
 
-# Hospital LOS
-boxplot(q2_data$hospital_los ~ q2_data$high_RBC)
-boxplot(q2_data$hospital_los ~ q2_data$high_plasma)
-boxplot(q2_data$hospital_los ~ q2_data$high_platelets)
-boxplot(q2_data$hospital_los ~ q2_data$high_cryo)
+## Hospital LOS
+wilcox.test(hospital_los ~ high_RBC, data = q2_data) 
+wilcox.test(hospital_los ~ high_plasma, data = q2_data) 
+wilcox.test(hospital_los ~ high_platelets, data = q2_data) 
+wilcox.test(hospital_los ~ high_cryo, data = q2_data)
 
-# ICU LOS 
-boxplot(q2_data$icu_los ~ q2_data$high_RBC)
-boxplot(q2_data$icu_los ~ q2_data$high_plasma)
-boxplot(q2_data$icu_los ~ q2_data$high_platelets)
-boxplot(q2_data$icu_los ~ q2_data$high_cryo)
+# RBC
+RBC_hospitalLOS <- ggboxplot(q2_data, x = "high_RBC", y = "hospital_los",
+                    xlab = "RBC Transfusion Level", ylab = "Hospital LOS (days)", color = "blue", palette = "jco", 
+                    font.label = list(size = 50, face = "plain"), outlier.shape = NA)
+RBC_hospitalLOS <- RBC_hospitalLOS + coord_cartesian(ylim = c(0,75))
+RBC_hospitalLOS
+
+# FFP
+FFP_hospitalLOS <- ggboxplot(q2_data, x = "high_plasma", y = "hospital_los",
+                             xlab = "FFP Transfusion Level", ylab = "Hospital LOS (days)", color = "Red", palette = "jco", 
+                             font.label = list(size = 50, face = "plain"), outlier.shape = NA)
+FFP_hospitalLOS <- FFP_hospitalLOS + coord_cartesian(ylim = c(0,75))
+FFP_hospitalLOS
+
+# Platelets
+platelets_hospitalLOS <- ggboxplot(q2_data, x = "high_platelets", y = "hospital_los",
+                             xlab = "Platelet Transfusion Level", ylab = "Hospital LOS (days)", color = "black", palette = "jco", 
+                             font.label = list(size = 50, face = "plain"), outlier.shape = NA)
+platelets_hospitalLOS <- platelets_hospitalLOS + coord_cartesian(ylim = c(0,75))
+platelets_hospitalLOS
+
+# Cryoprecipitate
+cryoprecipitate_hospitalLOS <- ggboxplot(q2_data, x = "high_cryo", y = "hospital_los",
+                                   xlab = "Cryoprecipitate Transfusion Level", ylab = "Hospital LOS (days)", color = "darkgreen", palette = "jco", 
+                                   font.label = list(size = 50, face = "plain"), outlier.shape = NA)
+cryoprecipitate_hospitalLOS <- cryoprecipitate_hospitalLOS + coord_cartesian(ylim = c(0,75))
+cryoprecipitate_hospitalLOS
+
+hospitalLOS_charts <- grid.arrange(RBC_hospitalLOS, FFP_hospitalLOS, platelets_hospitalLOS, cryoprecipitate_hospitalLOS)
+
+## ICU LOS 
+wilcox.test(icu_los ~ high_RBC, data = q2_data) # ns
+wilcox.test(icu_los ~ high_plasma, data = q2_data) # ns
+wilcox.test(icu_los ~ high_platelets, data = q2_data) # ns
+wilcox.test(icu_los ~ high_cryo, data = q2_data) # ns
+
+# RBC
+RBC_icuLOS <- ggboxplot(q2_data, x = "high_RBC", y = "icu_los",
+                             xlab = "RBC Transfusion Level", ylab = "Intensive Care Unit LOS (days)", color = "blue", palette = "jco", 
+                             font.label = list(size = 50, face = "plain"), outlier.shape = NA)
+RBC_icuLOS <- RBC_icuLOS + coord_cartesian(ylim = c(0,20))
+RBC_icuLOS
+
+# FFP
+FFP_icuLOS <- ggboxplot(q2_data, x = "high_plasma", y = "icu_los",
+                             xlab = "FFP Transfusion Level", ylab = "Intensive Care Unit LOS (days)", color = "Red", palette = "jco", 
+                             font.label = list(size = 50, face = "plain"), outlier.shape = NA)
+FFP_icuLOS <- FFP_icuLOS + coord_cartesian(ylim = c(0,35))
+FFP_icuLOS
+
+# Platelets
+platelets_icuLOS <- ggboxplot(q2_data, x = "high_platelets", y = "icu_los",
+                                   xlab = "Platelet Transfusion Level", ylab = "Intensive Care Unit LOS (days)", color = "black", palette = "jco", 
+                                   font.label = list(size = 50, face = "plain"), outlier.shape = NA)
+platelets_icuLOS <- platelets_icuLOS + coord_cartesian(ylim = c(0,20))
+platelets_icuLOS
+
+# Cryoprecipitate
+cryoprecipitate_icuLOS <- ggboxplot(q2_data, x = "high_cryo", y = "icu_los",
+                                         xlab = "Cryoprecipitate Transfusion Level", ylab = "Intensive Care Unit LOS (days)", color = "darkgreen", palette = "jco", 
+                                         font.label = list(size = 50, face = "plain"), outlier.shape = NA)
+cryoprecipitate_icuLOS <- cryoprecipitate_icuLOS + coord_cartesian(ylim = c(0,20))
+cryoprecipitate_icuLOS
+
+icuLOS_charts <- grid.arrange(RBC_icuLOS, FFP_icuLOS, platelets_icuLOS, cryoprecipitate_icuLOS)
 
 
