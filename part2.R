@@ -3,6 +3,7 @@ library(janitor)
 library(lubridate)
 library(corrplot)
 library(psych)
+library(dplyr)
 
 # Import data
 transfusion_data <- read.csv("transfusion_data.csv", stringsAsFactors = T, na.strings = c("", "?", "#VALUE!"))
@@ -73,6 +74,8 @@ q1_data <- new_vars %>%
          height, weight, age, bmi, transplant_reason, comorbidity_score, pre_hb,
          pre_hct, pre_platelets, pre_pt, pre_inr, pre_ptt, las_status, transplant_type, 
          repeat_status, exvivo_lung_perfusion, preoperative_ecls, intra_ecls_type)
+
+q1_data <- q1_data[-(193:200),]
 
 
 q2_data <- new_vars %>%
@@ -205,8 +208,11 @@ model2.back <- stepAIC(model2) # AIC -611.13, 18/25 predictors, error
 model3.back <- stepAIC(model3) # AIC 463.1, 18/25 predictors, error remove missing values?
 model4.back <- stepAIC(model4) # AIC 317.91, 12/25 predictors
 model5.back <- stepAIC(model5) # AIC 98.88, 18/25 predictors
-model6.back <- stepAIC(model6) # AIC 463.1, 18/25 predictors
+model6.back <- stepAIC(model6) # AIC 690.17, 17/25 predictors
 model7.back <- stepAIC(model7) # AIC 463.1, 18/25 predictors
 
+# testing normality assumption
+
+# testing heterosceasicity assumption
 
 
