@@ -1,7 +1,6 @@
 library(tidyverse)
 library(janitor)
 library(lubridate)
-library(mice)
 library(corrplot)
 library(psych)
 
@@ -89,8 +88,8 @@ test <- q1_data %>%
 
 ##### Descriptive Statistics #####
 summary(q2_data)
-  #1 missing in pre_ptt -> impute, cannot classify as MNAR, treat as MCAR
-  #12 missing in las_score -> impute, cannot classify as MNAR, treat as MCAR
+  #1 missing in pre_ptt -> impute, cannot classify as MNAR, treat as MAR?
+  #12 missing in las_score -> impute, cannot classify as MNAR, treat as MAR?
   #160 missing in death_date -> haven't died yet
 
 # Numerical variables
@@ -100,6 +99,9 @@ describe(q2_data[num_vars])
 
 # Categorical variables
 cat_vars <- names(dplyr::select_if(q2_data, is.character))
+lapply(q2_data[cat_vars],table)
+
+factored_vars <- names(dplyr::select_if(q2_data, is.factor))
 lapply(q2_data[cat_vars],table)
 
 # Categorical variables
