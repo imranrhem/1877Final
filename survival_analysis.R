@@ -45,10 +45,10 @@ q2_data <- q2_data %>%
   mutate(high_plasma = ifelse(peri_plasma > median(peri_plasma), "High", "Low")) %>%
   mutate(high_platelets = ifelse(peri_platelets > median(peri_platelets), "High", "Low")) %>%
   mutate(high_cryo = ifelse(peri_cryoprecipitate > median(peri_cryoprecipitate), "High", "Low")) %>%
-  mutate(rbc_platelets = case_when(high_RBC == "High" & high_platelets == "High" ~ "Both High",
-                                   high_RBC == "High" & high_platelets == "Low" ~ "RBC Only",
-                                   high_RBC == "Low" & high_platelets == "High" ~ "Plt Only",
-                                   high_RBC == "Low" & high_platelets == "Low" ~ "Both Low"))
+  mutate(rbc_platelets = case_when(high_RBC == "High" & high_platelets == "High" ~ "RBC + Plt",
+                                   high_RBC == "High" & high_platelets == "Low" ~ "RBC",
+                                   high_RBC == "Low" & high_platelets == "High" ~ "Plt",
+                                   high_RBC == "Low" & high_platelets == "Low" ~ "No Transfusion"))
 
 cat_vars <- names(dplyr::select_if(q2_data, is.character))
 q2_data[cat_vars] <- lapply(q2_data[cat_vars], factor)
@@ -58,6 +58,7 @@ q2_data$high_RBC <- relevel(q2_data$high_RBC, "Low")
 q2_data$high_plasma <- relevel(q2_data$high_plasma, "Low")
 q2_data$high_platelets <- relevel(q2_data$high_platelets, "Low")
 q2_data$high_cryo <- relevel(q2_data$high_cryo, "Low")
+q2_data$rbc_platelets <- factor(q2_data$rbc_platelets, levels = c("No Transfusion", "Plt", "RBC", "RBC + Plt"))
 
 table(q2_data$high_RBC)
 table(q2_data$high_plasma)
@@ -217,7 +218,6 @@ ggsurvplot(fit = platelets_sf,
            risk.table = TRUE, # Adds Risk Table
            risk.table.height = 0.25 # Adjusts the height of the risk table (default is 0.25)
 )
-title("platelets Transfusion")
 
 # Check Assumptions for log-rank test
 plot(survfit(Surv(time, death_status == "Dead") ~ high_platelets, data = survival_data), fun = "S", xlab = "Days From Transplant", ylab = "Survival", main = "Platelet Transfusion", col = c('red', "blue"))
@@ -297,7 +297,7 @@ cox.zph(high_cox)
 ## RBC and platelets 
 
 rbc_plt_data <- survival_data %>%
-  filter(!(rbc_platelets == "Plt Only"))
+  filter(!(rbc_platelets == "Plt"))
 
 rbc_plt_data$rbc_platelets <- droplevels(rbc_plt_data$rbc_platelets)
 
@@ -328,7 +328,7 @@ ggsurvplot(fit = rbc_plt_sf,
            ######## Format Legend #######
            legend = "none", 
            legend.title = "All Patients",
-           legend.labs = c("Both High","Both Low", "RBC Only"), # Change the Strata Legend
+           legend.labs = c("No Transfusion","RBC", "Plt"), # Change the Strata Legend
            ######## Risk Table #######
            risk.table = TRUE, # Adds Risk Table
            risk.table.height = 0.25 # Adjusts the height of the risk table (default is 0.25)
