@@ -20,7 +20,7 @@ q2_data <- readRDS("q2_data.rds")
 las_imputation <- q2_data %>% 
   select(c(gender:comorbidity_score, las_status, transplant_type, repeat_status, intra_ecls_type))
 
-las_imputation %>% missing_pairs(position = "fill")
+las_imputation %>% missing_pairs(position = "show")
 # related to transplant_reason
 # releated to gender (more missing in male)
 # related to transplant_type and repeat_status
@@ -70,7 +70,8 @@ table(q2_data$high_platelets)
 
 # Create new dataset with observations that have censoring or death at or before 365 days
 survival_data <- q2_data %>%
-  filter(time <= 365)
+  filter(time <= 365) %>%
+  filter(!is.na(las_status))
 
 par(mfrow=c(2,2))
 
@@ -293,7 +294,7 @@ summary(high_cox)
 cox.zph(high_cox)
 
 
-## RBC and platelets + NO PLATELETS 
+## RBC and platelets 
 
 rbc_plt_data <- survival_data %>%
   filter(!(rbc_platelets == "Plt Only"))
@@ -348,6 +349,32 @@ cox.zph(rbc_plt_cox)
 
 ### Non-Mortality Patient Outcomes ###
 
+## Descriptive statistics
+
+# RBC
+
+q2_data%>%
+  group_by(high_RBC)%>% 
+  summarise(Median_icu=median(icu_los), IqR_icu=quantile(icu_los), Median_hosp=median(hospital_los), IqR_hospital=quantile(hospital_los))
+
+# FFP
+
+q2_data%>%
+  group_by(high_plasma)%>% 
+  summarise(Median_icu=median(icu_los), IqR_icu=quantile(icu_los), Median_hosp=median(hospital_los), IqR_hospital=quantile(hospital_los))
+
+# Platelets
+
+q2_data%>%
+  group_by(high_platelets)%>% 
+  summarise(Median_icu=median(icu_los), IqR_icu=quantile(icu_los), Median_hosp=median(hospital_los), IqR_hospital=quantile(hospital_los))
+
+# Cryoprecipitate
+
+q2_data%>%
+  group_by(high_cryo)%>% 
+  summarise(Median_icu=median(icu_los), IqR_icu=quantile(icu_los), Median_hosp=median(hospital_los), IqR_hospital=quantile(hospital_los))
+
 ## Hospital LOS
 wilcox.test(hospital_los ~ high_RBC, data = q2_data) # significant
 wilcox.test(hospital_los ~ high_plasma, data = q2_data) # significant
@@ -386,8 +413,8 @@ hospitalLOS_charts <- grid.arrange(RBC_hospitalLOS, FFP_hospitalLOS, platelets_h
 
 ## ICU LOS 
 wilcox.test(icu_los ~ high_RBC, data = q2_data) # significant
-wilcox.test(icu_los ~ high_plasma, data = q2_data) # ns (slightly)
-wilcox.test(icu_los ~ high_platelets, data = q2_data) # ns ()
+wilcox.test(icu_los ~ high_plasma, data = q2_data) 
+wilcox.test(icu_los ~ high_platelets, data = q2_data)
 wilcox.test(icu_los ~ high_cryo, data = q2_data) # significant
 
 # RBC
@@ -422,15 +449,22 @@ icuLOS_charts <- grid.arrange(RBC_icuLOS, FFP_icuLOS, platelets_icuLOS, cryoprec
 
 # RBC + plt
 
-# Hospital LOS
+# Descriptive statistics
+
+q2_data%>%
+  group_by(rbc_platelets)%>% 
+  summarise(Median_icu=median(icu_los), IqR_icu=quantile(icu_los), Median_hosp=median(hospital_los), IqR_hospital=quantile(hospital_los))
+
 kruskal.test(subset(q2_data, !(rbc_platelets == "Plt Only")), hospital_los ~ rbc_platelets)
 
+# Dunn Test
 rbc_plt_hLOS <- dunnTest(hospital_los ~ rbc_platelets,
               data=subset(q2_data, !(rbc_platelets == "Plt Only")),
               method="bonferroni") # significance -> both low - RBC only, both high-both low
 
 rbc_plt_hLOS
 
+# Plot
 RBC_plt_hospitalLOS <- ggboxplot(data = subset(q2_data, !(rbc_platelets == "Plt Only")), x = "rbc_platelets", y = "hospital_los",
                         xlab = "RBC and Plt Combinations", ylab = "Intensive Care Unit LOS (days)", color = "blue", palette = "jco", 
                         font.label = list(size = 50, face = "plain"), outlier.shape = NA)
@@ -440,12 +474,14 @@ RBC_plt_hospitalLOS
 # ICU LOS
 kruskal.test(q2_data, icu_los ~ rbc_platelets)
 
+# Dunn test
 rbc_plt_icuLOS <- dunnTest(icu_los ~ rbc_platelets,
                          data=subset(q2_data, !(rbc_platelets == "Plt Only")),
                          method="bonferroni")
 
 rbc_plt_icuLOS # both high- both low, both low - RBC only
 
+# Plot
 RBC_plt_icuLOS <- ggboxplot(data = subset(q2_data, !(rbc_platelets == "Plt Only")), x = "rbc_platelets", y = "icu_los",
                                  xlab = "RBC and Plt Combinations", ylab = "Intensive Care Unit LOS (days)", color = "black", palette = "jco", 
                                  font.label = list(size = 50, face = "plain"), outlier.shape = NA)
