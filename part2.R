@@ -4,6 +4,7 @@ library(lubridate)
 library(corrplot)
 library(psych)
 library(dplyr)
+library(MASS)
 
 # Import data
 transfusion_data <- read.csv("transfusion_data.csv", stringsAsFactors = T, na.strings = c("", "?", "#VALUE!"))
@@ -77,6 +78,9 @@ q1_data <- new_vars %>%
 
 q1_data <- q1_data[-(193:200),]
 
+# removing NA values using complete case 
+q1_dataclean <- q1_data[complete.cases(q1_data),]
+
 
 q2_data <- new_vars %>%
   select(peri_RBC, peri_plasma, peri_platelets, peri_cryoprecipitate, massive_transfusion, any_transfusion, gender, 
@@ -85,6 +89,7 @@ q2_data <- new_vars %>%
          repeat_status, exvivo_lung_perfusion, preoperative_ecls, intra_ecls_type, 
          death_days, icu_los, hospital_los, alive_30days_yn, alive_90days_yn, alive_12mths_yn)
 
+q2_data <- q2_data[-(193:200),]
 
 test <- q1_data %>%
   filter(is.na(las_status))
@@ -154,65 +159,115 @@ md.pattern(selected_data, rotate.names = T)
 
 
 ### Multivariate Linear Regression
-
-model1 <- lm(cbind(peri_RBC, peri_plasma, peri_platelets, peri_cryoprecipitate) ~ 
+model1 <- lm(peri_RBC ~ 
                gender+ height+ weight+ age+ bmi+ transplant_reason+ comorbidity_score+ pre_hb+
                pre_hct+ pre_platelets+ pre_pt+ pre_inr+ pre_ptt+ las_status+ transplant_type+ 
                repeat_status+ exvivo_lung_perfusion+ preoperative_ecls+ intra_ecls_type, 
-             data = q1_data)
-summary(model1)
-coef(model1)
+             data = q1_dataclean)
 
-model2 <- lm(massive_transfusion ~ 
+model2 <- lm(peri_plasma ~ 
                gender+ height+ weight+ age+ bmi+ transplant_reason+ comorbidity_score+ pre_hb+
                pre_hct+ pre_platelets+ pre_pt+ pre_inr+ pre_ptt+ las_status+ transplant_type+ 
                repeat_status+ exvivo_lung_perfusion+ preoperative_ecls+ intra_ecls_type, 
-             data = q1_data)
-summary(model2)
+             data = q1_dataclean)
 
-
-model3 <- lm(peri_RBC ~ 
+model3 <- lm(peri_platelets ~ 
                gender+ height+ weight+ age+ bmi+ transplant_reason+ comorbidity_score+ pre_hb+
                pre_hct+ pre_platelets+ pre_pt+ pre_inr+ pre_ptt+ las_status+ transplant_type+ 
                repeat_status+ exvivo_lung_perfusion+ preoperative_ecls+ intra_ecls_type, 
-             data = q1_data)
+             data = q1_dataclean)
 
-model4 <- lm(peri_plasma ~ 
+model4 <- lm(peri_cryoprecipitate ~ 
                gender+ height+ weight+ age+ bmi+ transplant_reason+ comorbidity_score+ pre_hb+
                pre_hct+ pre_platelets+ pre_pt+ pre_inr+ pre_ptt+ las_status+ transplant_type+ 
                repeat_status+ exvivo_lung_perfusion+ preoperative_ecls+ intra_ecls_type, 
-             data = q1_data)
+             data = q1_dataclean)
 
-model5 <- lm(peri_platelets ~ 
-               gender+ height+ weight+ age+ bmi+ transplant_reason+ comorbidity_score+ pre_hb+
-               pre_hct+ pre_platelets+ pre_pt+ pre_inr+ pre_ptt+ las_status+ transplant_type+ 
-               repeat_status+ exvivo_lung_perfusion+ preoperative_ecls+ intra_ecls_type, 
-             data = q1_data)
+# check variance inflation factor (VIF) to check for collinearity, if vif > 5 model will be adjusted
+# note: treating GVIF values as VIF for variables with df = 1, if df > 1, using the square of the scaled GVIF value
+library(car)
+vif(model1)
+vif(model2) 
+vif(model3)  
+vif(model4) 
 
-model6 <- lm(peri_cryoprecipitate ~ 
-               gender+ height+ weight+ age+ bmi+ transplant_reason+ comorbidity_score+ pre_hb+
-               pre_hct+ pre_platelets+ pre_pt+ pre_inr+ pre_ptt+ las_status+ transplant_type+ 
+# adjusted models based on VIF results - excluding height, weight, pre_hct, and pre_pt
+model1 <- lm(peri_RBC ~ 
+               gender+ age+ bmi+ transplant_reason+ comorbidity_score+ pre_hb+
+               pre_platelets+ pre_inr+ pre_ptt+ las_status+ transplant_type+ 
                repeat_status+ exvivo_lung_perfusion+ preoperative_ecls+ intra_ecls_type, 
-             data = q1_data)
+             data = q1_dataclean)
 
-model7 <- lm(any_transfusion ~
-               gender+ height+ weight+ age+ bmi+ transplant_reason+ comorbidity_score+ pre_hb+
-               pre_hct+ pre_platelets+ pre_pt+ pre_inr+ pre_ptt+ las_status+ transplant_type+ 
+model2 <- lm(peri_plasma ~ 
+               gender+ age+ bmi+ transplant_reason+ comorbidity_score+ pre_hb+
+               pre_platelets+ pre_inr+ pre_ptt+ las_status+ transplant_type+ 
                repeat_status+ exvivo_lung_perfusion+ preoperative_ecls+ intra_ecls_type, 
-             data = q1_data)
+             data = q1_dataclean)
+
+model3 <- lm(peri_platelets ~ 
+               gender+ age+ bmi+ transplant_reason+ comorbidity_score+ pre_hb+
+               pre_platelets+ pre_inr+ pre_ptt+ las_status+ transplant_type+ 
+               repeat_status+ exvivo_lung_perfusion+ preoperative_ecls+ intra_ecls_type, 
+             data = q1_dataclean)
+
+model4 <- lm(peri_cryoprecipitate ~ 
+               gender+ age+ bmi+ transplant_reason+ comorbidity_score+ pre_hb+
+               pre_platelets+ pre_inr+ pre_ptt+ las_status+ transplant_type+ 
+               repeat_status+ exvivo_lung_perfusion+ preoperative_ecls+ intra_ecls_type, 
+             data = q1_dataclean)
 
 # backwards stepwise variable selection
-library(MASS)
-model1.back <- stepAIC(model1) # AIC 2970.25, 19/25 predictors, error
-model2.back <- stepAIC(model2) # AIC -611.13, 18/25 predictors, error
-model3.back <- stepAIC(model3) # AIC 463.1, 18/25 predictors, error remove missing values?
-model4.back <- stepAIC(model4) # AIC 317.91, 12/25 predictors
-model5.back <- stepAIC(model5) # AIC 98.88, 18/25 predictors
-model6.back <- stepAIC(model6) # AIC 690.17, 17/25 predictors
-model7.back <- stepAIC(model7) # AIC 463.1, 18/25 predictors
+model1.back <- stepAIC(model1) # AIC 454.68, 8/15 predictors
+model2.back <- stepAIC(model2) # AIC 317.25, 5/15 predictors
+model3.back <- stepAIC(model3) # AIC 90.68, 8/15 predictors
+model4.back <- stepAIC(model4) # AIC 687.63, 7/15 predictors
+# old result for model 4 -- recheck? AIC 88.55, 11/15 predictors
 
-# testing normality assumption
+# coefficients for best model following results of stepwise selection
+summary(model1.back)
+summary(model2.back)
+summary(model3.back)
+summary(model4.back)
 
-# testing heterosceasicity assumption
+
+### testing linear regression assumptions on best stepwise models
+par(mfrow = c(2, 2))
+plot(model1.back)
+
+par(mfrow = c(2, 2))
+plot(model2.back)
+
+par(mfrow = c(2, 2))
+plot(model3.back)
+
+par(mfrow = c(2, 2))
+plot(model4.back)
+
+# scaling response variable of best stepwise models to attempt to improve residual plots
+model1.scale <- lm(sqrt(peri_RBC) ~ gender + pre_hb + pre_inr + pre_ptt + repeat_status + 
+                     exvivo_lung_perfusion + preoperative_ecls + intra_ecls_type, 
+                   data = q1_dataclean)
+par(mfrow = c(2, 2))
+plot(model1.scale)
+
+model2.scale <- lm(sqrt(peri_plasma) ~ gender + pre_ptt + repeat_status + 
+                     exvivo_lung_perfusion + preoperative_ecls, 
+                   data = q1_dataclean)
+par(mfrow = c(2, 2))
+plot(model2.scale)
+
+model3.scale <- lm(sqrt(peri_platelets) ~ gender + age + pre_platelets + pre_inr + repeat_status + 
+                          exvivo_lung_perfusion + preoperative_ecls + intra_ecls_type, 
+                   data = q1_dataclean)
+par(mfrow = c(2, 2))
+plot(model3.scale)
+
+model4.scale <- lm(sqrt(peri_cryoprecipitate) ~ gender + age + pre_platelets + repeat_status + 
+                          exvivo_lung_perfusion + preoperative_ecls + intra_ecls_type, 
+                   data = q1_dataclean)
+par(mfrow = c(2, 2))
+plot(model4.scale)
+
+
 
 
