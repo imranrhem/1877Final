@@ -222,6 +222,8 @@ ggsurvplot(fit = platelets_sf,
 # Check Assumptions for log-rank test
 plot(survfit(Surv(time, death_status == "Dead") ~ high_platelets, data = survival_data), fun = "S", xlab = "Days From Transplant", ylab = "Survival", main = "Platelet Transfusion", col = c('red', "blue"))
 legend("bottomright", legend = c("Platelets <= 0 units ", "Platelets > 0 units"), lty = 1, col = c("red", "blue"))
+plot(survfit(Surv(time, death_status == "Dead") ~ high_platelets, data = survival_data), fun = "cloglog")
+
 
 # Log-rank test
 survdiff(Surv(time, death_status == "Dead") ~ high_platelets, data = survival_data)  # p = 0.9
